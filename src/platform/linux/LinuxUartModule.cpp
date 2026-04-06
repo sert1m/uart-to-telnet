@@ -8,6 +8,7 @@
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
+#include <iostream>
 #include <termios.h>
 #include <unistd.h>
 
@@ -36,60 +37,69 @@ LinuxUartModule::~LinuxUartModule() {
 bool LinuxUartModule::open(const UartConfig& config) {
     config_ = config;
 
-    fd_ = ::open(config.portName.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+    fd_ = ::open(config.portName.c_str(), O_RDWR | O_NOCTTY);
     if (fd_ < 0) {
+        std::cerr << "LinuxUartModule: open(\"" << config.portName
+                  << "\") failed: " << strerror(errno) << std::endl;
         return false;
     }
 
+    // Build termios from scratch — do NOT inherit kernel defaults via tcgetattr,
+    // as leftover cooked-mode flags cause garbled data.
     struct termios tty{};
-    if (tcgetattr(fd_, &tty) != 0) {
-        ::close(fd_);
-        fd_ = -1;
-        return false;
-    }
+    memset(&tty, 0, sizeof(tty));
 
     speed_t speed = toBaudConstant(config.baudRate);
     cfsetispeed(&tty, speed);
     cfsetospeed(&tty, speed);
 
-    // Data bits
-    tty.c_cflag &= ~CSIZE;
+    // c_cflag: data bits, parity, stop bits, enable receiver, ignore modem lines
+    tty.c_cflag = CLOCAL | CREAD;
     switch (config.dataBits) {
         case 5: tty.c_cflag |= CS5; break;
         case 6: tty.c_cflag |= CS6; break;
         case 7: tty.c_cflag |= CS7; break;
         default: tty.c_cflag |= CS8; break;
     }
-
-    // Parity
     if (config.parity == "even") {
         tty.c_cflag |= PARENB;
-        tty.c_cflag &= ~PARODD;
     } else if (config.parity == "odd") {
-        tty.c_cflag |= PARENB;
-        tty.c_cflag |= PARODD;
-    } else {
-        tty.c_cflag &= ~PARENB;
+        tty.c_cflag |= PARENB | PARODD;
     }
-
-    // Stop bits
     if (config.stopBits == 2) {
         tty.c_cflag |= CSTOPB;
-    } else {
-        tty.c_cflag &= ~CSTOPB;
     }
 
-    tty.c_cflag |= CLOCAL | CREAD;
-    tty.c_lflag = 0;
+    // c_iflag: no input processing at all (raw)
     tty.c_iflag = 0;
+
+    // c_oflag: no output processing (raw)
     tty.c_oflag = 0;
-    tty.c_cc[VMIN] = 0;
-    tty.c_cc[VTIME] = 1; // 100ms read timeout
+
+    // c_lflag: no line processing (non-canonical, no echo, no signals)
+    tty.c_lflag = 0;
+
+    // Blocking read: return after at least 1 byte, with 100ms inter-byte timeout
+    tty.c_cc[VMIN] = 1;
+    tty.c_cc[VTIME] = 1;
+
+    // Flush any stale data in the driver buffers
+    tcflush(fd_, TCIOFLUSH);
 
     if (tcsetattr(fd_, TCSANOW, &tty) != 0) {
+        std::cerr << "LinuxUartModule: tcsetattr failed: " << strerror(errno) << std::endl;
         ::close(fd_);
         fd_ = -1;
         return false;
+    }
+
+    // Verify settings took effect (log warning if mismatch, but don't fail —
+    // some USB-serial drivers report back slightly different flag bits)
+    struct termios verify{};
+    tcgetattr(fd_, &verify);
+    if (cfgetispeed(&verify) != speed) {
+        std::cerr << "LinuxUartModule: warning — baud rate may not have been set correctly"
+                  << std::endl;
     }
 
     // Start read thread if callback is set

@@ -16,8 +16,8 @@
     "displayTimeoutMs": 60000,
     "commandSequence": {
         "rules": [
-            { "trigger": "login:", "response": "admin" },
-            { "trigger": "password:", "response": "admin" }
+            { "trigger": "login:", "response": "root" },
+            { "trigger": "password:", "response": "root" }
         ],
         "postCommands": [
             { "command": "journalctl -f", "expectedPrompt": "~$", "delayMs": 1000 }
