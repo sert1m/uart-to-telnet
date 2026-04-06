@@ -1,0 +1,28 @@
+{
+    "uart": {
+        "portName": "/dev/ttyUSB0",
+        "baudRate": 115200,
+        "dataBits": 8,
+        "parity": "none",
+        "stopBits": 1
+    },
+    "telnetPort": 2323,
+    "httpPort": 8080,
+    "wifi": {
+        "ssid": "YourSSID",
+        "password": "YourPassword",
+        "maxRetries": 10
+    },
+    "displayTimeoutMs": 60000,
+    "commandSequence": {
+        "rules": [
+            { "trigger": "login:", "response": "admin" },
+            { "trigger": "password:", "response": "admin" }
+        ],
+        "postCommands": [
+            { "command": "journalctl -f", "expectedPrompt": "~$", "delayMs": 1000 }
+        ],
+        "lineEnding": "\n",
+        "promptTimeoutMs": 5000
+    }
+}
