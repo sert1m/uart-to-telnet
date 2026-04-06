@@ -139,23 +139,38 @@ void BridgeController::wireTelnetCallback() {
 void BridgeController::registerHttpHandlers() {
     // POST /config — update AutoResponder configuration
     http_.registerHandler("POST", "/config", [this](const std::string& body) -> HttpResponse {
-        auto [seq, error] = ConfigParser::parseCommandSequence(body);
-        if (!error.empty()) {
-            return {400, "{\"error\":\"" + error + "\"}", "application/json"};
+        auto result = ConfigParser::parseCommandSequence(body);
+        if (!result.second.empty()) {
+            HttpResponse resp;
+            resp.statusCode = 400;
+            resp.body = "{\"error\":\"" + result.second + "\"}";
+            resp.contentType = "application/json";
+            return resp;
         }
-        autoResponder_.setConfig(seq);
-        return {200, "{\"status\":\"ok\"}", "application/json"};
+        autoResponder_.setConfig(result.first);
+        HttpResponse resp;
+        resp.statusCode = 200;
+        resp.body = "{\"status\":\"ok\"}";
+        resp.contentType = "application/json";
+        return resp;
     });
 
     // GET /config — return current AutoResponder configuration
     http_.registerHandler("GET", "/config", [this](const std::string& /*body*/) -> HttpResponse {
-        std::string json = ConfigParser::serializeCommandSequence(autoResponder_.getConfig());
-        return {200, json, "application/json"};
+        HttpResponse resp;
+        resp.statusCode = 200;
+        resp.body = ConfigParser::serializeCommandSequence(autoResponder_.getConfig());
+        resp.contentType = "application/json";
+        return resp;
     });
 
     // Default 404 handler for unknown endpoints
     http_.registerHandler("*", "*", [](const std::string& /*body*/) -> HttpResponse {
-        return {404, "{\"error\":\"Not found\"}", "application/json"};
+        HttpResponse resp;
+        resp.statusCode = 404;
+        resp.body = "{\"error\":\"Not found\"}";
+        resp.contentType = "application/json";
+        return resp;
     });
 }
 
