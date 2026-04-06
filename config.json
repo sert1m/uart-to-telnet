@@ -20,9 +20,9 @@
             { "trigger": "password:", "response": "root" }
         ],
         "postCommands": [
-            { "command": "journalctl -f", "expectedPrompt": "~$", "delayMs": 1000 }
+            { "command": "journalctl -f", "expectedPrompt": "#", "delayMs": 1000 }
         ],
         "lineEnding": "\n",
-        "promptTimeoutMs": 5000
+        "promptTimeoutMs": 120000
     }
 }

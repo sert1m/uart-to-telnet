@@ -45,21 +45,16 @@ static BridgeConfig makeConfig() {
 
     // Auto-responder rules
     cfg.commandSequence.lineEnding = "\n";
-    cfg.commandSequence.promptTimeoutMs = 5000;
+    cfg.commandSequence.promptTimeoutMs = 120000; // 2 minutes
 
     PromptRule loginRule;
     loginRule.trigger = "login:";
-    loginRule.response = "admin";
+    loginRule.response = "root";
     cfg.commandSequence.rules.push_back(loginRule);
-
-    PromptRule passRule;
-    passRule.trigger = "password:";
-    passRule.response = "admin";
-    cfg.commandSequence.rules.push_back(passRule);
 
     PostCommand postCmd;
     postCmd.command = "journalctl -f";
-    postCmd.expectedPrompt = "~$";
+    postCmd.expectedPrompt = "#";
     postCmd.delayMs = 1000;
     cfg.commandSequence.postCommands.push_back(postCmd);
 
@@ -80,6 +75,7 @@ static AutoResponder* autoResponder = nullptr;
 static BridgeController* controller = nullptr;
 
 static uint32_t lastTickMs = 0;
+static BridgeConfig savedConfig;
 
 void setup() {
     M5.begin(true, false, true); // LCD=true, SD=false, Serial=true
@@ -88,6 +84,7 @@ void setup() {
     Serial.println("UART-Telnet Bridge starting...");
 
     BridgeConfig config = makeConfig();
+    savedConfig = config;
 
     // AutoResponder writes to UART
     autoResponder = new AutoResponder([](const uint8_t* data, size_t len) {
@@ -123,6 +120,13 @@ void loop() {
 
     // Tick the controller
     controller->tick(elapsed);
+
+    // If AutoResponder went IDLE (login timed out or completed), retry login
+    if (autoResponder->getState() == AutoResponder::State::IDLE &&
+        !savedConfig.commandSequence.rules.empty()) {
+        Serial.println("AutoResponder idle — retrying login sequence...");
+        autoResponder->setConfig(savedConfig.commandSequence);
+    }
 
     // Small yield to avoid watchdog
     delay(1);
