@@ -47,7 +47,7 @@ static BridgeConfig makeConfig() {
 
     // Auto-responder rules
     cfg.commandSequence.lineEnding = "\n";
-    cfg.commandSequence.promptTimeoutMs = 120000; // 2 minutes
+    cfg.commandSequence.promptTimeoutMs = 0; // 0 = wait forever
 
     PromptRule loginRule;
     loginRule.trigger = "login:";
@@ -125,13 +125,6 @@ void loop() {
 
     // Tick the controller
     controller->tick(elapsed);
-
-    // If AutoResponder went IDLE (login timed out or completed), retry login
-    if (autoResponder->getState() == AutoResponder::State::IDLE &&
-        !savedConfig.commandSequence.rules.empty()) {
-        Serial.println("AutoResponder idle — retrying login sequence...");
-        autoResponder->setConfig(savedConfig.commandSequence);
-    }
 
     // Yield to WiFi/system tasks to prevent watchdog reset
     delay(10);

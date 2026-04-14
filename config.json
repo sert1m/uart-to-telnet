@@ -23,6 +23,6 @@
             { "command": "journalctl -f", "expectedPrompt": "#", "delayMs": 1000 }
         ],
         "lineEnding": "\n",
-        "promptTimeoutMs": 120000
+        "promptTimeoutMs": 0
     }
 }

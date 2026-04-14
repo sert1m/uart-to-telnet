@@ -17,6 +17,8 @@ static constexpr int Y_IP       = 60;
 static constexpr int Y_SEP      = 85;
 static constexpr int Y_RX       = 105;
 static constexpr int Y_TX       = 125;
+static constexpr int Y_BAT      = 150;
+static constexpr int Y_UPTIME   = 170;
 static constexpr int ROW_H      = 20;
 static constexpr int SCREEN_W   = 320;
 
@@ -65,6 +67,17 @@ void M5DisplayModule::update(const DisplayStatus& status) {
     drawRow(Y_RX, CYAN, buf);
     snprintf(buf, sizeof(buf), "TX: %u B/s    ", status.uartTxBytesPerSec);
     drawRow(Y_TX, CYAN, buf);
+
+    // Battery level
+    int8_t batLevel = M5.Power.getBatteryLevel();
+    uint16_t batColor = (batLevel > 50) ? GREEN : (batLevel > 20) ? YELLOW : RED;
+    snprintf(buf, sizeof(buf), "Bat: %d%%    ", batLevel);
+    drawRow(Y_BAT, batColor, buf);
+
+    // Uptime
+    uint32_t uptimeSec = millis() / 1000;
+    snprintf(buf, sizeof(buf), "Up: %us    ", uptimeSec);
+    drawRow(Y_UPTIME, WHITE, buf);
 }
 
 void M5DisplayModule::setBacklight(bool on) {

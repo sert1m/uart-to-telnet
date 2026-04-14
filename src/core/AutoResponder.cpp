@@ -120,22 +120,24 @@ void AutoResponder::tick(uint32_t elapsedMs) {
                 sendCurrentPostCommand();
             }
         } else if (waitingForPostPrompt_) {
-            // Waiting for expectedPrompt — check timeout
-            postCmdDelayAccum_ += elapsedMs;
-            if (postCmdDelayAccum_ >= config_.promptTimeoutMs) {
-                // Timeout waiting for expected prompt — log warning and fall back to delay
-                std::cerr << "AutoResponder: prompt timeout waiting for expected prompt \""
-                          << postCmd.expectedPrompt << "\"" << std::endl;
+            // Waiting for expectedPrompt — check timeout (0 = wait forever)
+            if (config_.promptTimeoutMs > 0) {
+                postCmdDelayAccum_ += elapsedMs;
+                if (postCmdDelayAccum_ >= config_.promptTimeoutMs) {
+                    std::cerr << "AutoResponder: prompt timeout waiting for expected prompt \""
+                              << postCmd.expectedPrompt << "\"" << std::endl;
 
-                currentPostCmdIndex_++;
-                postCmdDelayAccum_ = 0;
-                postCmdSent_ = false;
-                waitingForPostPrompt_ = false;
+                    currentPostCmdIndex_++;
+                    postCmdDelayAccum_ = 0;
+                    postCmdSent_ = false;
+                    waitingForPostPrompt_ = false;
 
-                if (currentPostCmdIndex_ >= config_.postCommands.size()) {
-                    state_ = State::IDLE;
+                    if (currentPostCmdIndex_ >= config_.postCommands.size()) {
+                        state_ = State::IDLE;
+                    }
                 }
             }
+            // else: timeout=0, wait forever for the prompt (handled in process())
         }
     }
 }
@@ -184,8 +186,8 @@ void AutoResponder::sendCurrentPostCommand() {
     sendToUart(postCmd.command + config_.lineEnding);
     postCmdSent_ = true;
 
-    if (!postCmd.expectedPrompt.empty() && config_.promptTimeoutMs > 0) {
-        // Wait for expected prompt
+    if (!postCmd.expectedPrompt.empty()) {
+        // Wait for expected prompt (timeout=0 means wait forever)
         waitingForPostPrompt_ = true;
         postCmdDelayAccum_ = 0;
     } else {
