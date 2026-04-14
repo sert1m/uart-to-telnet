@@ -10,6 +10,7 @@ bool M5WiFiModule::connect(const WiFiConfig& config) {
     config_ = config;
 
     WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
     WiFi.begin(config.ssid.c_str(), config.password.c_str());
 
     int retries = 0;
