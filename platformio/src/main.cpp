@@ -6,6 +6,8 @@
  */
 
 #include <M5Stack.h>
+#include "soc/rtc_cntl_reg.h"
+#include "soc/soc.h"
 
 #include "core/AutoResponder.h"
 #include "core/BridgeController.h"
@@ -78,6 +80,9 @@ static uint32_t lastTickMs = 0;
 static BridgeConfig savedConfig;
 
 void setup() {
+    // Disable brownout detector to prevent spurious resets on power dips
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+
     M5.begin(true, false, true); // LCD=true, SD=false, Serial=true
     M5.Power.begin();
 
@@ -128,6 +133,6 @@ void loop() {
         autoResponder->setConfig(savedConfig.commandSequence);
     }
 
-    // Small yield to avoid watchdog
-    delay(1);
+    // Yield to WiFi/system tasks to prevent watchdog reset
+    delay(10);
 }

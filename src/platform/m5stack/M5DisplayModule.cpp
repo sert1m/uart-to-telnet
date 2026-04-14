@@ -1,18 +1,38 @@
 /**
  * @file M5DisplayModule.cpp
  * @brief M5Stack Basic v1.0 display implementation.
+ *
+ * Uses partial redraws — only clears and repaints individual text fields
+ * instead of fillScreen() to avoid flickering.
  */
 
 #include "M5DisplayModule.h"
 #include <M5Stack.h>
 
+// Layout constants (y positions for each row at textSize=2, 16px per row)
+static constexpr int Y_TITLE    = 0;
+static constexpr int Y_WIFI     = 20;
+static constexpr int Y_RSSI     = 40;
+static constexpr int Y_IP       = 60;
+static constexpr int Y_SEP      = 85;
+static constexpr int Y_RX       = 105;
+static constexpr int Y_TX       = 125;
+static constexpr int ROW_H      = 20;
+static constexpr int SCREEN_W   = 320;
+
+/// Clear a single row and print new text.
+static void drawRow(int y, uint16_t fg, const char* text) {
+    M5.Lcd.fillRect(0, y, SCREEN_W, ROW_H, BLACK);
+    M5.Lcd.setTextColor(fg, BLACK);
+    M5.Lcd.setCursor(0, y);
+    M5.Lcd.print(text);
+}
+
 void M5DisplayModule::init() {
     M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextColor(GREEN, BLACK);
     M5.Lcd.setTextSize(2);
-    M5.Lcd.setCursor(0, 0);
-    M5.Lcd.println("UART-Telnet Bridge");
-    M5.Lcd.println("Initializing...");
+    drawRow(Y_TITLE, GREEN, "UART-Telnet Bridge");
+    drawRow(Y_SEP, WHITE, "----------------");
     lastActivityMs_ = millis();
 }
 
@@ -22,36 +42,35 @@ void M5DisplayModule::update(const DisplayStatus& status) {
         setBacklight(false);
     }
 
-    // Only redraw if backlight is on
     if (!backlightOn_) return;
 
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setCursor(0, 0);
     M5.Lcd.setTextSize(2);
 
     // WiFi status
+    char buf[64];
     if (status.wifiConnected) {
-        M5.Lcd.setTextColor(GREEN, BLACK);
-        M5.Lcd.println("WiFi: Connected");
-        M5.Lcd.printf("RSSI: %d dBm\n", status.signalStrengthDbm);
-        M5.Lcd.printf("IP: %s\n", status.ipAddress.c_str());
+        drawRow(Y_WIFI, GREEN, "WiFi: Connected");
+        snprintf(buf, sizeof(buf), "RSSI: %d dBm    ", status.signalStrengthDbm);
+        drawRow(Y_RSSI, GREEN, buf);
+        snprintf(buf, sizeof(buf), "IP: %s    ", status.ipAddress.c_str());
+        drawRow(Y_IP, GREEN, buf);
     } else {
-        M5.Lcd.setTextColor(RED, BLACK);
-        M5.Lcd.println("WiFi: Disconnected");
+        drawRow(Y_WIFI, RED, "WiFi: Disconnected");
+        drawRow(Y_RSSI, RED, "");
+        drawRow(Y_IP, RED, "");
     }
 
-    // Separator
-    M5.Lcd.setTextColor(WHITE, BLACK);
-    M5.Lcd.println("----------------");
-
     // UART throughput
-    M5.Lcd.setTextColor(CYAN, BLACK);
-    M5.Lcd.printf("RX: %u B/s\n", status.uartRxBytesPerSec);
-    M5.Lcd.printf("TX: %u B/s\n", status.uartTxBytesPerSec);
+    snprintf(buf, sizeof(buf), "RX: %u B/s    ", status.uartRxBytesPerSec);
+    drawRow(Y_RX, CYAN, buf);
+    snprintf(buf, sizeof(buf), "TX: %u B/s    ", status.uartTxBytesPerSec);
+    drawRow(Y_TX, CYAN, buf);
 }
 
 void M5DisplayModule::setBacklight(bool on) {
+    if (backlightOn_ == on) return; // no change
     backlightOn_ = on;
+    Serial.printf("[Display] Backlight %s\n", on ? "ON" : "OFF");
     M5.Lcd.setBrightness(on ? 200 : 0);
 }
 
@@ -65,6 +84,7 @@ void M5DisplayModule::onButtonPress() {
 void M5DisplayModule::pollButtons() {
     M5.update();
     if (M5.BtnA.wasPressed()) {
+        Serial.println("[Display] Button A pressed — waking backlight");
         onButtonPress();
     }
 }
