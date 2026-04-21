@@ -80,6 +80,7 @@ static BridgeController* controller = nullptr;
 
 static uint32_t lastTickMs = 0;
 static BridgeConfig savedConfig;
+static bool wasIdle = false;
 
 void setup() {
     // Disable brownout detector to prevent spurious resets on power dips
@@ -145,6 +146,17 @@ void loop() {
 
     // Tick the controller
     controller->tick(elapsed);
+
+    // If AutoResponder went IDLE (login+postcommands completed or device rebooted),
+    // re-arm it once so it catches the next login: prompt
+    if (autoResponder->getState() == AutoResponder::State::IDLE &&
+        !savedConfig.commandSequence.rules.empty() && !wasIdle) {
+        wasIdle = true;
+        autoResponder->setConfig(savedConfig.commandSequence);
+        Serial.println("AutoResponder re-armed, waiting for login...");
+    } else if (autoResponder->getState() != AutoResponder::State::IDLE) {
+        wasIdle = false;
+    }
 
     // Yield to WiFi/system tasks to prevent watchdog reset
     delay(10);
