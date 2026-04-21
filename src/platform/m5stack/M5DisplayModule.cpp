@@ -14,13 +14,16 @@ static constexpr int Y_TITLE    = 0;
 static constexpr int Y_WIFI     = 20;
 static constexpr int Y_RSSI     = 40;
 static constexpr int Y_IP       = 60;
-static constexpr int Y_SEP      = 85;
-static constexpr int Y_RX       = 105;
-static constexpr int Y_TX       = 125;
-static constexpr int Y_BAT      = 150;
-static constexpr int Y_UPTIME   = 170;
+static constexpr int Y_SEP      = 80;
+static constexpr int Y_RX       = 100;
+static constexpr int Y_TX       = 120;
+static constexpr int Y_BAT      = 140;
+static constexpr int Y_UPTIME   = 160;
+static constexpr int Y_SD       = 180;
 static constexpr int ROW_H      = 20;
 static constexpr int SCREEN_W   = 320;
+
+static constexpr const char* SW_VERSION = "1.0.0";
 
 /// Clear a single row and print new text.
 static void drawRow(int y, uint16_t fg, const char* text) {
@@ -33,7 +36,9 @@ static void drawRow(int y, uint16_t fg, const char* text) {
 void M5DisplayModule::init() {
     M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setTextSize(2);
-    drawRow(Y_TITLE, GREEN, "UART-Telnet Bridge");
+    char title[64];
+    snprintf(title, sizeof(title), "UART-Telnet v%s", SW_VERSION);
+    drawRow(Y_TITLE, GREEN, title);
     drawRow(Y_SEP, WHITE, "----------------");
     lastActivityMs_ = millis();
 }
@@ -78,8 +83,16 @@ void M5DisplayModule::update(const DisplayStatus& status) {
     uint32_t uptimeSec = millis() / 1000;
     snprintf(buf, sizeof(buf), "Up: %us    ", uptimeSec);
     drawRow(Y_UPTIME, WHITE, buf);
-}
 
+    // SD card status
+    if (storage_ && storage_->isAvailable()) {
+        std::string fname = storage_->getCurrentFileName();
+        snprintf(buf, sizeof(buf), "SD:%d %s    ", storage_->getFileCount(), fname.c_str());
+        drawRow(Y_SD, GREEN, buf);
+    } else {
+        drawRow(Y_SD, DARKGREY, "SD: not available");
+    }
+}
 void M5DisplayModule::setBacklight(bool on) {
     if (backlightOn_ == on) return; // no change
     backlightOn_ = on;

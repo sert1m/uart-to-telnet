@@ -17,6 +17,7 @@ ln -sf ../../src/platform/m5stack/M5HttpServer.cpp platformio/src/M5HttpServer.c
 ln -sf ../../src/platform/m5stack/M5DisplayModule.cpp platformio/src/M5DisplayModule.cpp
 ln -sf ../../src/platform/m5stack/M5WiFiModule.cpp platformio/src/M5WiFiModule.cpp
 ln -sf ../../src/platform/m5stack/M5ConfigParser.cpp platformio/src/M5ConfigParser.cpp
+ln -sf ../../src/platform/m5stack/M5StorageModule.cpp platformio/src/M5StorageModule.cpp
 
 echo "=== Building M5Stack firmware ==="
 echo "WiFi SSID: $WIFI_SSID"

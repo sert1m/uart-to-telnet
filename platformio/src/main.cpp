@@ -18,6 +18,7 @@
 #include "platform/m5stack/M5HttpServer.h"
 #include "platform/m5stack/M5DisplayModule.h"
 #include "platform/m5stack/M5WiFiModule.h"
+#include "platform/m5stack/M5StorageModule.h"
 
 // ============================================================
 // Hardcoded configuration — edit these for your environment
@@ -55,7 +56,7 @@ static BridgeConfig makeConfig() {
     cfg.commandSequence.rules.push_back(loginRule);
 
     PostCommand postCmd;
-    postCmd.command = "journalctl -f";
+    postCmd.command = "journalctl -o short-monotonic";
     postCmd.expectedPrompt = "#";
     postCmd.delayMs = 1000;
     cfg.commandSequence.postCommands.push_back(postCmd);
@@ -72,6 +73,7 @@ static M5TelnetServer telnet;
 static M5HttpServer http;
 static M5DisplayModule display;
 static M5WiFiModule wifi;
+static M5StorageModule storage; // 20MB max file, 100 files
 
 static AutoResponder* autoResponder = nullptr;
 static BridgeController* controller = nullptr;
@@ -83,10 +85,20 @@ void setup() {
     // Disable brownout detector to prevent spurious resets on power dips
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
 
-    M5.begin(true, false, true); // LCD=true, SD=false, Serial=true
+    M5.begin(true, true, true); // LCD=true, SD=true, Serial=true
     M5.Power.begin();
 
     Serial.println("UART-Telnet Bridge starting...");
+
+    // Initialize SD card storage (optional — continues without it)
+    if (storage.init()) {
+        Serial.println("SD card storage ready.");
+    } else {
+        Serial.println("SD card not available — logging to SD disabled.");
+    }
+
+    // Let display show SD status
+    display.setStorage(&storage);
 
     BridgeConfig config = makeConfig();
     savedConfig = config;
@@ -96,7 +108,8 @@ void setup() {
         uart.write(data, len);
     });
 
-    controller = new BridgeController(uart, telnet, http, display, wifi, *autoResponder);
+    controller = new BridgeController(uart, telnet, http, display, wifi, *autoResponder,
+                                       storage.isAvailable() ? &storage : nullptr);
 
     if (!controller->startup(config)) {
         M5.Lcd.fillScreen(RED);
@@ -110,6 +123,12 @@ void setup() {
 
     lastTickMs = millis();
     Serial.println("Bridge running.");
+
+    // Send a newline to provoke a prompt from the device.
+    // If already logged in, this shows "#" or "$". If logged out, shows "login:".
+    delay(500);
+    const char* nl = "\n";
+    uart.write(reinterpret_cast<const uint8_t*>(nl), 1);
 }
 
 void loop() {
@@ -122,6 +141,7 @@ void loop() {
     telnet.poll();
     http.poll();
     display.pollButtons();
+    storage.poll();
 
     // Tick the controller
     controller->tick(elapsed);

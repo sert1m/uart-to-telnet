@@ -7,6 +7,7 @@
 #define PLATFORM_M5STACK_DISPLAY_MODULE_H
 
 #include "interfaces/DisplayModule.h"
+#include "interfaces/StorageModule.h"
 #include <cstdint>
 
 /**
@@ -25,9 +26,13 @@ public:
     /// Call from loop() to check button A press.
     void pollButtons();
 
+    /// Set optional storage module reference for SD status display.
+    void setStorage(StorageModule* storage) { storage_ = storage; }
+
 private:
     bool backlightOn_ = true;
     uint32_t lastActivityMs_ = 0;
+    StorageModule* storage_ = nullptr;
     static constexpr uint32_t BACKLIGHT_TIMEOUT_MS = 60000;
 };
 

@@ -9,6 +9,7 @@
 #include "core/ConfigParser.h"
 #include "interfaces/DisplayModule.h"
 #include "interfaces/HttpServer.h"
+#include "interfaces/StorageModule.h"
 #include "interfaces/TelnetServer.h"
 #include "interfaces/UartModule.h"
 #include "interfaces/WiFiModule.h"
@@ -20,13 +21,15 @@ BridgeController::BridgeController(UartModule& uart,
                                    HttpServer& http,
                                    DisplayModule& display,
                                    WiFiModule& wifi,
-                                   AutoResponder& autoResponder)
+                                   AutoResponder& autoResponder,
+                                   StorageModule* storage)
     : uart_(uart)
     , telnet_(telnet)
     , http_(http)
     , display_(display)
     , wifi_(wifi)
-    , autoResponder_(autoResponder) {}
+    , autoResponder_(autoResponder)
+    , storage_(storage) {}
 
 bool BridgeController::startup(const BridgeConfig& config) {
     config_ = config;
@@ -123,6 +126,11 @@ void BridgeController::wireUartCallback() {
 
         // Broadcast to all Telnet clients
         telnet_.broadcast(data, length);
+
+        // Write to storage if available
+        if (storage_) {
+            storage_->write(data, length);
+        }
     });
 }
 

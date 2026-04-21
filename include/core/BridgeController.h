@@ -20,6 +20,7 @@ class TelnetServer;
 class HttpServer;
 class DisplayModule;
 class WiFiModule;
+class StorageModule;
 
 /**
  * @brief Central orchestrator that wires platform modules and core logic.
@@ -45,7 +46,8 @@ public:
                      HttpServer& http,
                      DisplayModule& display,
                      WiFiModule& wifi,
-                     AutoResponder& autoResponder);
+                     AutoResponder& autoResponder,
+                     StorageModule* storage = nullptr);
 
     /**
      * @brief Initialize all modules, wire callbacks, and register HTTP handlers.
@@ -117,6 +119,7 @@ private:
     DisplayModule& display_;
     WiFiModule& wifi_;
     AutoResponder& autoResponder_;
+    StorageModule* storage_ = nullptr;
 
     BridgeConfig config_;               ///< Stored configuration from startup.
 
