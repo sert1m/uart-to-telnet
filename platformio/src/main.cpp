@@ -56,7 +56,7 @@ static BridgeConfig makeConfig() {
     cfg.commandSequence.rules.push_back(loginRule);
 
     PostCommand postCmd;
-    postCmd.command = "journalctl -o short-monotonic";
+    postCmd.command = "journalctl -f -o short-monotonic";
     postCmd.expectedPrompt = "#";
     postCmd.delayMs = 1000;
     cfg.commandSequence.postCommands.push_back(postCmd);
