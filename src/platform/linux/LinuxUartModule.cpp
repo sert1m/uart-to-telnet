@@ -79,8 +79,10 @@ bool LinuxUartModule::open(const UartConfig& config) {
     // c_lflag: no line processing (non-canonical, no echo, no signals)
     tty.c_lflag = 0;
 
-    // Blocking read: return after at least 1 byte, with 100ms inter-byte timeout
-    tty.c_cc[VMIN] = 1;
+    // Blocking read with 100ms timeout so the read loop can check running_.
+    // VMIN=0 + VTIME=1 means: return immediately if data available, otherwise
+    // time out after 100ms (VTIME units are 1/10th second).
+    tty.c_cc[VMIN] = 0;
     tty.c_cc[VTIME] = 1;
 
     // Flush any stale data in the driver buffers
@@ -113,12 +115,14 @@ bool LinuxUartModule::open(const UartConfig& config) {
 
 void LinuxUartModule::close() {
     running_ = false;
-    if (readThread_.joinable()) {
-        readThread_.join();
-    }
+    // Close fd first so the read loop's ::read() returns immediately
+    // (returns 0 or -1) rather than waiting for the next VTIME timeout.
     if (fd_ >= 0) {
         ::close(fd_);
         fd_ = -1;
+    }
+    if (readThread_.joinable()) {
+        readThread_.join();
     }
 }
 
@@ -151,9 +155,14 @@ bool LinuxUartModule::reopen() {
 void LinuxUartModule::readLoop() {
     uint8_t buf[256];
     while (running_) {
-        ssize_t n = ::read(fd_, buf, sizeof(buf));
+        int currentFd = fd_;
+        if (currentFd < 0) break;
+        ssize_t n = ::read(currentFd, buf, sizeof(buf));
         if (n > 0 && onDataCallback_) {
             onDataCallback_(buf, static_cast<size_t>(n));
+        } else if (n < 0 && errno != EAGAIN && errno != EINTR) {
+            // Real error (e.g. EBADF after close) — exit the loop
+            break;
         }
     }
 }

@@ -7,12 +7,8 @@
         "stopBits": 1
     },
     "telnetPort": 2323,
-    "httpPort": 8080,
-    "wifi": {
-        "ssid": "YourSSID",
-        "password": "YourPassword",
-        "maxRetries": 10
-    },
+    "logDir": "./logs",
+    "networkInterface": "wlp0s20f3",
     "displayTimeoutMs": 60000,
     "commandSequence": {
         "rules": [

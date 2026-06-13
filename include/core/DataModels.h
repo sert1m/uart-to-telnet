@@ -89,8 +89,8 @@ struct CommandSequence {
  * @brief Top-level application configuration.
  *
  * Aggregates all configuration needed to initialize the bridge: UART settings,
- * network ports, WiFi credentials, display timeout, and the auto-responder
- * command sequence.
+ * network ports, WiFi credentials, display timeout, log directory, and the
+ * auto-responder command sequence.
  *
  * @see Requirement 9.1
  */
@@ -100,6 +100,8 @@ struct BridgeConfig {
     uint16_t httpPort = 80;                ///< HTTP server listening port (default: 80).
     WiFiConfig wifi;                        ///< WiFi access point settings.
     uint32_t displayTimeoutMs = 60000;     ///< Display backlight timeout in ms (default: 60000).
+    std::string logDir;                     ///< Directory for log files (empty = no file logging).
+    std::string networkInterface;           ///< Network interface name for IP display, e.g. "eth0" (empty = auto-detect).
     CommandSequence commandSequence;        ///< AutoResponder command sequence configuration.
 };
 

@@ -140,6 +140,7 @@ struct Arbitrary<BridgeConfig> {
                               [](int v) { return static_cast<uint16_t>(v); })),
             gen::set(&BridgeConfig::wifi, gen::arbitrary<WiFiConfig>()),
             gen::set(&BridgeConfig::displayTimeoutMs, gen::inRange<uint32_t>(1, 600000)),
+            gen::set(&BridgeConfig::logDir, gen::arbitrary<std::string>()),
             gen::set(&BridgeConfig::commandSequence, gen::arbitrary<CommandSequence>()));
     }
 };
@@ -190,28 +191,23 @@ struct RequiredField {
 
 /// All required fields that must be present in a valid BridgeConfig JSON.
 static const std::vector<RequiredField> kRequiredFields = {
-    // Top-level
+    // Top-level required fields
     {"", "uart"},
     {"", "telnetPort"},
-    {"", "httpPort"},
-    {"", "wifi"},
-    {"", "displayTimeoutMs"},
     {"", "commandSequence"},
-    // Under uart
+    // Under uart (always required)
     {"uart", "portName"},
     {"uart", "baudRate"},
     {"uart", "dataBits"},
     {"uart", "parity"},
     {"uart", "stopBits"},
-    // Under wifi
-    {"wifi", "ssid"},
-    {"wifi", "password"},
-    {"wifi", "maxRetries"},
-    // Under commandSequence
+    // Under commandSequence (always required)
     {"commandSequence", "rules"},
     {"commandSequence", "postCommands"},
     {"commandSequence", "lineEnding"},
     {"commandSequence", "promptTimeoutMs"},
+    // Note: httpPort, wifi, displayTimeoutMs, and logDir are optional fields
+    // and are intentionally excluded from this list.
 };
 
 } // anonymous namespace

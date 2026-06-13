@@ -5,6 +5,7 @@ add_library(platform_linux STATIC
     LinuxHttpServer.cpp
     LinuxDisplayModule.cpp
     LinuxWiFiStub.cpp
+    LinuxStorageModule.cpp
 )
 
 target_include_directories(platform_linux

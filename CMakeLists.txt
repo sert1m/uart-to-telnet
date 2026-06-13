@@ -4,6 +4,9 @@ project(uartTelnetBridge LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Export compile_commands.json for IDE navigation (clangd, Kiro, etc.)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Platform selection cache variable (linux or esp32)
 set(PLATFORM "linux" CACHE STRING "Target platform: linux, esp32")
 

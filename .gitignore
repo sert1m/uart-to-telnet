@@ -74,6 +74,4 @@ massif.out.*
 # Data and configs for testing
 .data
 .secure
-
-# Exported docker container
-colortouch2.tar.gz
+logs

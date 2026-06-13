@@ -207,32 +207,36 @@ std::pair<BridgeConfig, std::string> ConfigParser::parseJson(const std::string& 
     if (!err.empty()) return {{}, err};
     config.telnetPort = static_cast<uint16_t>(doc["telnetPort"].GetUint());
 
-    // httpPort
-    err = requireUint(doc, "httpPort", "config");
-    if (!err.empty()) return {{}, err};
-    config.httpPort = static_cast<uint16_t>(doc["httpPort"].GetUint());
-
-    // wifi
-    err = requireObject(doc, "wifi", "config");
-    if (!err.empty()) return {{}, err};
-    {
-        const auto& w = doc["wifi"];
-        err = requireString(w, "ssid", "wifi");
-        if (!err.empty()) return {{}, err};
-        err = requireString(w, "password", "wifi");
-        if (!err.empty()) return {{}, err};
-        err = requireInt(w, "maxRetries", "wifi");
-        if (!err.empty()) return {{}, err};
-
-        config.wifi.ssid = w["ssid"].GetString();
-        config.wifi.password = w["password"].GetString();
-        config.wifi.maxRetries = w["maxRetries"].GetInt();
+    // httpPort — optional (not needed on Linux)
+    if (doc.HasMember("httpPort") && doc["httpPort"].IsUint()) {
+        config.httpPort = static_cast<uint16_t>(doc["httpPort"].GetUint());
     }
 
-    // displayTimeoutMs
-    err = requireUint(doc, "displayTimeoutMs", "config");
-    if (!err.empty()) return {{}, err};
-    config.displayTimeoutMs = doc["displayTimeoutMs"].GetUint();
+    // wifi — optional (not needed on Linux, host network is used instead)
+    if (doc.HasMember("wifi") && doc["wifi"].IsObject()) {
+        const auto& w = doc["wifi"];
+        if (w.HasMember("ssid") && w["ssid"].IsString())
+            config.wifi.ssid = w["ssid"].GetString();
+        if (w.HasMember("password") && w["password"].IsString())
+            config.wifi.password = w["password"].GetString();
+        if (w.HasMember("maxRetries") && w["maxRetries"].IsInt())
+            config.wifi.maxRetries = w["maxRetries"].GetInt();
+    }
+
+    // displayTimeoutMs — optional
+    if (doc.HasMember("displayTimeoutMs") && doc["displayTimeoutMs"].IsUint()) {
+        config.displayTimeoutMs = doc["displayTimeoutMs"].GetUint();
+    }
+
+    // logDir — optional: directory for log files (Linux file logging, SD card path on M5Stack)
+    if (doc.HasMember("logDir") && doc["logDir"].IsString()) {
+        config.logDir = doc["logDir"].GetString();
+    }
+
+    // networkInterface — optional: interface name for IP address display on Linux
+    if (doc.HasMember("networkInterface") && doc["networkInterface"].IsString()) {
+        config.networkInterface = doc["networkInterface"].GetString();
+    }
 
     // commandSequence
     err = requireObject(doc, "commandSequence", "config");
@@ -268,6 +272,16 @@ std::string ConfigParser::serializeBridgeConfig(const BridgeConfig& config) {
     doc.AddMember("wifi", wifiObj, alloc);
 
     doc.AddMember("displayTimeoutMs", config.displayTimeoutMs, alloc);
+
+    // logDir (optional, only serialize if non-empty)
+    if (!config.logDir.empty()) {
+        doc.AddMember("logDir", Value(config.logDir.c_str(), alloc), alloc);
+    }
+
+    // networkInterface (optional, only serialize if non-empty)
+    if (!config.networkInterface.empty()) {
+        doc.AddMember("networkInterface", Value(config.networkInterface.c_str(), alloc), alloc);
+    }
 
     // commandSequence
     Value csObj;

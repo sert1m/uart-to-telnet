@@ -8,6 +8,7 @@
 
 #include "M5DisplayModule.h"
 #include <M5Stack.h>
+#include "Version.h"
 
 // Layout constants (y positions for each row at textSize=2, 16px per row)
 static constexpr int Y_TITLE    = 0;
@@ -22,8 +23,6 @@ static constexpr int Y_UPTIME   = 160;
 static constexpr int Y_SD       = 180;
 static constexpr int ROW_H      = 20;
 static constexpr int SCREEN_W   = 320;
-
-static constexpr const char* SW_VERSION = "1.0.0";
 
 /// Clear a single row and print new text.
 static void drawRow(int y, uint16_t fg, const char* text) {

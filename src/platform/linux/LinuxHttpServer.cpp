@@ -18,39 +18,13 @@ LinuxHttpServer::~LinuxHttpServer() {
     stop();
 }
 
-bool LinuxHttpServer::start(uint16_t port) {
-    serverFd_ = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (serverFd_ < 0) {
-        return false;
-    }
-
-    int opt = 1;
-    setsockopt(serverFd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-    struct sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(port);
-
-    if (::bind(serverFd_, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) < 0) {
-        ::close(serverFd_);
-        serverFd_ = -1;
-        return false;
-    }
-
-    if (::listen(serverFd_, 5) < 0) {
-        ::close(serverFd_);
-        serverFd_ = -1;
-        return false;
-    }
-
-    running_ = true;
-    acceptThread_ = std::thread(&LinuxHttpServer::acceptLoop, this);
+bool LinuxHttpServer::start(uint16_t /*port*/) {
+    // HTTP is not used on Linux — return true without binding a socket.
     return true;
 }
 
 void LinuxHttpServer::stop() {
-    running_ = false;
+    if (!running_.exchange(false)) return;  // never started or already stopped
 
     if (serverFd_ >= 0) {
         ::shutdown(serverFd_, SHUT_RDWR);

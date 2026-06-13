@@ -15,6 +15,7 @@
 #include "interfaces/HttpServer.h"
 #include "interfaces/DisplayModule.h"
 #include "interfaces/WiFiModule.h"
+#include "interfaces/StorageModule.h"
 
 #include <memory>
 #include <string>
@@ -26,11 +27,12 @@
  * of all platform-specific modules needed by the bridge.
  */
 struct PlatformModules {
-    std::unique_ptr<UartModule> uart;         ///< UART communication module.
-    std::unique_ptr<TelnetServer> telnet;     ///< Telnet server module.
-    std::unique_ptr<HttpServer> http;         ///< HTTP server module.
-    std::unique_ptr<DisplayModule> display;   ///< Status display module.
-    std::unique_ptr<WiFiModule> wifi;         ///< WiFi connectivity module.
+    std::unique_ptr<UartModule> uart;           ///< UART communication module.
+    std::unique_ptr<TelnetServer> telnet;       ///< Telnet server module.
+    std::unique_ptr<HttpServer> http;           ///< HTTP server module.
+    std::unique_ptr<DisplayModule> display;     ///< Status display module.
+    std::unique_ptr<WiFiModule> wifi;           ///< WiFi connectivity module.
+    std::unique_ptr<StorageModule> storage;     ///< Log storage module (may be nullptr).
 };
 
 /**
@@ -44,10 +46,13 @@ public:
     /**
      * @brief Create all platform modules for the given platform identifier.
      * @param platformId Platform name, e.g., "linux" or "esp32".
+     * @param logDir     Directory for log files (empty = no file logging). Used on Linux.
      * @return PlatformModules struct with all modules instantiated.
      * @throws std::runtime_error if @p platformId is not recognized.
      */
-    static PlatformModules create(const std::string& platformId);
+    static PlatformModules create(const std::string& platformId,
+                                  const std::string& logDir = {},
+                                  const std::string& networkInterface = {});
 };
 
 #endif // PLATFORM_FACTORY_H
