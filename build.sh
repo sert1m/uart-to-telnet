@@ -2,9 +2,10 @@
 # build.sh — fast incremental build for Linux target
 #
 # Usage:
-#   ./build.sh           # incremental build (default)
+#   ./build.sh           # incremental Release build, no tests
 #   ./build.sh --clean   # wipe build dir and rebuild from scratch
 #   ./build.sh --debug   # build with Debug symbols (default is Release)
+#   ./build.sh --test    # build and run tests (implies --debug)
 #   ./build.sh --run     # build then run the bridge with config.json
 #
 # The script always regenerates compile_commands.json so IDE navigation
@@ -17,12 +18,14 @@ BUILD_DIR="$SCRIPT_DIR/build"
 BUILD_TYPE="Release"
 CLEAN=0
 RUN=0
+BUILD_TESTS=0
 
 # ── Parse arguments ────────────────────────────────────────────────────────
 for arg in "$@"; do
     case "$arg" in
         --clean)  CLEAN=1 ;;
         --debug)  BUILD_TYPE="Debug" ;;
+        --test)   BUILD_TESTS=1; BUILD_TYPE="Debug" ;;
         --run)    RUN=1 ;;
         --help|-h)
             sed -n '2,12p' "$0" | sed 's/^# //'
@@ -43,10 +46,11 @@ fi
 
 # ── Configure (only if CMakeCache is missing or after a clean) ─────────────
 if [ ! -f "$BUILD_DIR/CMakeCache.txt" ]; then
-    echo "=== Configuring (${BUILD_TYPE}) ==="
+    echo "=== Configuring (${BUILD_TYPE}, tests=$([ $BUILD_TESTS -eq 1 ] && echo ON || echo OFF)) ==="
     cmake -B "$BUILD_DIR" \
           -DPLATFORM=linux \
           -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+          -DBUILD_TESTS=$([ $BUILD_TESTS -eq 1 ] && echo ON || echo OFF) \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
           "$SCRIPT_DIR"
 else
@@ -56,6 +60,7 @@ else
         cmake -B "$BUILD_DIR" \
               -DPLATFORM=linux \
               -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+              -DBUILD_TESTS=$([ $BUILD_TESTS -eq 1 ] && echo ON || echo OFF) \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
               "$SCRIPT_DIR"
     fi
@@ -69,6 +74,13 @@ echo ""
 echo "=== Build complete ==="
 echo "  Binary : $BUILD_DIR/uartTelnetBridge"
 echo "  CompDB : $BUILD_DIR/compile_commands.json"
+
+# ── Optionally run tests ───────────────────────────────────────────────────
+if [ "$BUILD_TESTS" -eq 1 ]; then
+    echo ""
+    echo "=== Running tests ==="
+    ctest --test-dir "$BUILD_DIR" --output-on-failure
+fi
 
 # ── Optionally run ─────────────────────────────────────────────────────────
 if [ "$RUN" -eq 1 ]; then

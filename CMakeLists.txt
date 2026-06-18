@@ -18,18 +18,9 @@ add_library(core
 )
 target_include_directories(core PUBLIC include)
 
-# Fetch RapidJSON for JSON parsing (header-only, skip its tests/examples)
-include(FetchContent)
-FetchContent_Declare(
-    rapidjson
-    GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
-    GIT_TAG        v1.1.0
-)
-set(RAPIDJSON_BUILD_DOC OFF CACHE BOOL "" FORCE)
-set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_Populate(rapidjson)
-target_include_directories(core PUBLIC ${rapidjson_SOURCE_DIR}/include)
+# Use system-installed RapidJSON (install with: sudo apt install rapidjson-dev)
+find_package(RapidJSON REQUIRED)
+target_include_directories(core PUBLIC ${RAPIDJSON_INCLUDE_DIRS})
 
 # Platform-specific sources (selected by PLATFORM variable)
 add_subdirectory(src/platform/${PLATFORM})
@@ -38,8 +29,8 @@ add_subdirectory(src/platform/${PLATFORM})
 add_executable(uartTelnetBridge src/main.cpp src/PlatformFactory.cpp)
 target_link_libraries(uartTelnetBridge core platform_${PLATFORM})
 
-# Tests (Linux host only)
-if(PLATFORM STREQUAL "linux")
+# Tests (Linux host only, opt-in via BUILD_TESTS)
+if(PLATFORM STREQUAL "linux" AND BUILD_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif()
