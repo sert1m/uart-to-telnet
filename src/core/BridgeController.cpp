@@ -71,13 +71,14 @@ bool BridgeController::startup(const BridgeConfig& config) {
         return false;
     }
 
+    // Configure AutoResponder BEFORE wiring callbacks so no prompt is missed
+    // if the UART device sends the login prompt immediately after the port opens.
+    autoResponder_.setConfig(config_.commandSequence);
+
     // Wire callbacks and handlers
     wireUartCallback();
     wireTelnetCallback();
     registerHttpHandlers();
-
-    // Configure AutoResponder with the initial command sequence
-    autoResponder_.setConfig(config_.commandSequence);
 
     return true;
 }

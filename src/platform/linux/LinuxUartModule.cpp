@@ -37,24 +37,33 @@ LinuxUartModule::~LinuxUartModule() {
 bool LinuxUartModule::open(const UartConfig& config) {
     config_ = config;
 
-    fd_ = ::open(config.portName.c_str(), O_RDWR | O_NOCTTY);
+    fd_ = ::open(config.portName.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd_ < 0) {
         std::cerr << "LinuxUartModule: open(\"" << config.portName
                   << "\") failed: " << strerror(errno) << std::endl;
         return false;
     }
 
-    // Build termios from scratch — do NOT inherit kernel defaults via tcgetattr,
-    // as leftover cooked-mode flags cause garbled data.
+    // Get current port attributes as a baseline — required on Linux so that
+    // the CBAUD bits in c_cflag are properly initialised before cfset*speed.
+    // Building termios from scratch (memset 0) causes some USB-serial drivers
+    // (CP210x, CH340) to report "speed 0 baud" and receive nothing.
     struct termios tty{};
-    memset(&tty, 0, sizeof(tty));
+    if (tcgetattr(fd_, &tty) != 0) {
+        std::cerr << "LinuxUartModule: tcgetattr failed: " << strerror(errno) << std::endl;
+        ::close(fd_);
+        fd_ = -1;
+        return false;
+    }
 
     speed_t speed = toBaudConstant(config.baudRate);
     cfsetispeed(&tty, speed);
     cfsetospeed(&tty, speed);
 
-    // c_cflag: data bits, parity, stop bits, enable receiver, ignore modem lines
-    tty.c_cflag = CLOCAL | CREAD;
+    // c_cflag: data bits, parity, stop bits, enable receiver, ignore modem lines.
+    // Clear only the bits we're about to set; preserve the rest (e.g. CBAUD).
+    tty.c_cflag &= ~(CSIZE | PARENB | PARODD | CSTOPB | CRTSCTS);
+    tty.c_cflag |= CLOCAL | CREAD;
     switch (config.dataBits) {
         case 5: tty.c_cflag |= CS5; break;
         case 6: tty.c_cflag |= CS6; break;
@@ -70,19 +79,13 @@ bool LinuxUartModule::open(const UartConfig& config) {
         tty.c_cflag |= CSTOPB;
     }
 
-    // c_iflag: no input processing at all (raw)
-    tty.c_iflag = 0;
-
-    // c_oflag: no output processing (raw)
+    // Raw mode: disable all input/output/line processing
+    tty.c_iflag = IGNBRK | IGNPAR;
     tty.c_oflag = 0;
-
-    // c_lflag: no line processing (non-canonical, no echo, no signals)
     tty.c_lflag = 0;
 
-    // Blocking read with 100ms timeout so the read loop can check running_.
-    // VMIN=0 + VTIME=1 means: return immediately if data available, otherwise
-    // time out after 100ms (VTIME units are 1/10th second).
-    tty.c_cc[VMIN] = 0;
+    // VMIN=0 + VTIME=1: return immediately if data available, else 100ms timeout
+    tty.c_cc[VMIN]  = 0;
     tty.c_cc[VTIME] = 1;
 
     // Flush any stale data in the driver buffers
@@ -90,6 +93,19 @@ bool LinuxUartModule::open(const UartConfig& config) {
 
     if (tcsetattr(fd_, TCSANOW, &tty) != 0) {
         std::cerr << "LinuxUartModule: tcsetattr failed: " << strerror(errno) << std::endl;
+        ::close(fd_);
+        fd_ = -1;
+        return false;
+    }
+
+    // Clear O_NONBLOCK now that termios is configured — the port was opened
+    // non-blocking only to avoid hanging on open() when no carrier is present
+    // (e.g. USB-serial adapters).  With VMIN=0/VTIME=1 the read loop gets a
+    // 100ms timeout which is sufficient; O_NONBLOCK would bypass VTIME and
+    // cause a busy-spin returning EAGAIN instead.
+    int flags = fcntl(fd_, F_GETFL);
+    if (flags < 0 || fcntl(fd_, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+        std::cerr << "LinuxUartModule: fcntl(F_SETFL) failed: " << strerror(errno) << std::endl;
         ::close(fd_);
         fd_ = -1;
         return false;

@@ -13,11 +13,9 @@
     "commandSequence": {
         "rules": [
             { "trigger": "login:", "response": "root" },
-            { "trigger": "password:", "response": "root" }
+            { "trigger": "#", "response": "journalctl -f -o short-monotonic" }
         ],
-        "postCommands": [
-            { "command": "journalctl -f", "expectedPrompt": "#", "delayMs": 1000 }
-        ],
+        "postCommands": [],
         "lineEnding": "\n",
         "promptTimeoutMs": 0
     }
