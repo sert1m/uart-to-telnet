@@ -9,6 +9,6 @@
 #define VERSION_H
 
 /// @brief Software version string displayed on all UIs (M5Stack, Linux status file, etc.).
-static constexpr const char* SW_VERSION = "1.1.2";
+static constexpr const char* SW_VERSION = "1.1.3";
 
 #endif // VERSION_H

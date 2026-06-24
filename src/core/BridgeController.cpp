@@ -96,6 +96,13 @@ void BridgeController::tick(uint32_t elapsedMs) {
     // Forward tick to AutoResponder for timeout/delay handling
     autoResponder_.tick(elapsedMs);
 
+    // Re-arm AutoResponder when it goes IDLE so device reboots are handled
+    // automatically — the sequence restarts from rule[0] on next trigger.
+    if (autoResponder_.getState() == AutoResponder::State::IDLE &&
+        (!config_.commandSequence.rules.empty() || !config_.commandSequence.postCommands.empty())) {
+        autoResponder_.setConfig(config_.commandSequence);
+    }
+
     // Accumulate time for throughput calculation
     throughputElapsedMs_ += elapsedMs;
 
